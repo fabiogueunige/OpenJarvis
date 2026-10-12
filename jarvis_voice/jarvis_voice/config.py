@@ -60,12 +60,34 @@ class AudioConfig:
 
 
 @dataclass
+class SessionConfig:
+    resume_active: bool = True          # wake word resumes an active session
+    inactivity_timeout_seconds: float = 45.0
+    followup_window_seconds: float = 30.0
+    max_context_tokens: int = 1500      # rolling history budget (estimate-based)
+    exit_phrases: list[str] = field(default_factory=lambda: [
+        "goodbye jarvis", "bye jarvis", "stop listening", "never mind",
+        "nevermind", "cancel",
+    ])
+
+
+@dataclass
+class BargeInTuning:
+    enabled: bool = True
+    threshold_rms: float = 900.0
+    min_frames_in_row: int = 4
+    grace_seconds: float = 0.35
+
+
+@dataclass
 class AppConfig:
     wake_word: WakeWordConfig = field(default_factory=WakeWordConfig)
     stt: SttConfig = field(default_factory=SttConfig)
     llm: LlmConfig = field(default_factory=LlmConfig)
     tts: TtsConfig = field(default_factory=TtsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    session: SessionConfig = field(default_factory=SessionConfig)
+    barge_in: BargeInTuning = field(default_factory=BargeInTuning)
     store_audio: bool = False         # must be explicitly enabled; default off
 
 
@@ -87,6 +109,8 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         _fill(cfg.llm, raw.get("llm", {}))
         _fill(cfg.tts, raw.get("tts", {}))
         _fill(cfg.audio, raw.get("audio", {}))
+        _fill(cfg.session, raw.get("session", {}))
+        _fill(cfg.barge_in, raw.get("barge_in", {}))
         if "store_audio" in raw:
             cfg.store_audio = bool(raw["store_audio"])
     return cfg

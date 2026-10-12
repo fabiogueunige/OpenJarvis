@@ -131,6 +131,7 @@ def test_ollama_generate_posts_chat(monkeypatch):
         status = 200
         def read(self):
             return json.dumps({"message": {"content": "Hello sir."}}).encode()
+        def close(self): pass
         def __enter__(self): return self
         def __exit__(self, *a): return False
 
