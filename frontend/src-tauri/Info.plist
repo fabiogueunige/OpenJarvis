@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>NSCameraUsageDescription</key>
-  <string>Use your selected camera for optional on-device hand tracking in chat. Frames are not recorded or sent to a server.</string>
   <key>NSAppTransportSecurity</key>
   <dict>
     <!-- The desktop API URL is user-configurable, so it cannot be represented

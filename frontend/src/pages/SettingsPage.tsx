@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router';
 import {
   Palette,
   Globe,
@@ -18,8 +17,6 @@ import {
   Search,
   Brain,
   RefreshCw,
-  Server,
-  Wifi,
 } from 'lucide-react';
 import { useAppStore, type ThemeMode } from '../lib/store';
 import {
@@ -232,36 +229,6 @@ function SettingRow({ label, description, children }: { label: string; descripti
   );
 }
 
-export function NetworkStatusRow() {
-  const [online, setOnline] = useState<boolean | null>(
-    () => typeof navigator === 'undefined' ? null : navigator.onLine,
-  );
-
-  useEffect(() => {
-    const updateOnline = () => setOnline(navigator.onLine);
-    window.addEventListener('online', updateOnline);
-    window.addEventListener('offline', updateOnline);
-    return () => {
-      window.removeEventListener('online', updateOnline);
-      window.removeEventListener('offline', updateOnline);
-    };
-  }, []);
-
-  return (
-    <SettingRow
-      label="Browser network"
-      description="Browser signal only; it does not verify internet or cloud-provider reachability."
-    >
-      <div className="flex items-center gap-2">
-        <Wifi size={14} style={{ color: online ? 'var(--color-success)' : 'var(--color-text-tertiary)' }} />
-        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-          {online === null ? 'Unknown' : online ? 'Online' : 'Offline'}
-        </span>
-      </div>
-    </SettingRow>
-  );
-}
-
 type MemoryStatus =
   | { kind: 'loading' }
   | { kind: 'ready'; stats: MemoryStats }
@@ -373,7 +340,6 @@ export function SettingsPage() {
   const [customEngine, setCustomEngine] = useState('lmstudio');
   const [customKey, setCustomKey] = useState('');
   const [srcMsg, setSrcMsg] = useState('');
-  const inferenceConfigurable = isTauri();
 
   useEffect(() => {
     getInferenceSource().then((s) => {
@@ -554,7 +520,6 @@ export function SettingsPage() {
 
           {/* Connection */}
           <Section title="Connection">
-            <NetworkStatusRow />
             <SettingRow label="Server status" description={serverInfo ? `${serverInfo.engine} / ${serverInfo.model}` : 'Not connected'}>
               <div className="flex items-center gap-2">
                 <span
@@ -599,14 +564,10 @@ export function SettingsPage() {
 
           {/* Inference source */}
           <Section title="Inference source">
-            <p className="text-xs mb-2" style={{ color: 'var(--color-text-tertiary)' }}>
-              Ollama is supported for local inference. The desktop app can connect to Colibri through its OpenAI-compatible API; OpenJarvis agents provide multi-step tool use and reasoning, while Colibri serves one model at a time. Maya AI is not wired in: its reviewed assistant script has no supported service or plugin API, so it cannot be safely managed here.
-            </p>
-            <SettingRow label="Source" description={inferenceConfigurable ? 'Where the app runs models. Applies after restart.' : 'The browser uses the backend’s configured model source; change inference sources in the desktop app.'}>
+            <SettingRow label="Source" description="Where the app runs models. Applies after restart.">
               <select
                 value={srcKind}
                 onChange={(e) => { setSrcKind(e.target.value as InferenceSource['kind']); setSrcMsg(''); }}
-                disabled={!inferenceConfigurable}
                 className="text-sm px-3 py-1.5 rounded-lg outline-none w-56"
                 style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
               >
@@ -616,39 +577,21 @@ export function SettingsPage() {
             </SettingRow>
             {srcKind === 'custom' && (
               <>
-                <SettingRow label="Colibri preset" description="Sets the desktop app's LM Studio-compatible adapter target; configure Colibri separately and enter its exact model ID below.">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSrcKind('custom');
-                      setCustomEngine('lmstudio');
-                      setCustomHost('http://127.0.0.1:8001');
-                      setCustomModel('');
-                      setSrcMsg('Colibri preset selected. Enter a model ID exposed by Colibri, then save and restart.');
-                    }}
-                    disabled={!inferenceConfigurable}
-                    title={inferenceConfigurable ? undefined : 'Inference sources can only be changed in the desktop app.'}
-                    className="text-xs px-3 py-1.5 rounded-lg cursor-pointer"
-                    style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)', opacity: inferenceConfigurable ? 1 : 0.5, cursor: inferenceConfigurable ? 'pointer' : 'not-allowed' }}
-                  >
-                    <span className="flex items-center gap-1.5"><Server size={13} /> Use Colibri preset</span>
-                  </button>
-                </SettingRow>
-                <SettingRow label="Server URL" description={customEngine === 'lmstudio' ? 'Base URL. For Colibri, configure loopback:8001 to avoid Jarvis’s default port 8000.' : 'OpenAI-compatible server base URL'}>
-                  <input type="text" value={customHost} onChange={(e) => { setCustomHost(e.target.value); setSrcMsg(''); }} placeholder="http://localhost:1234/v1" disabled={!inferenceConfigurable}
+                <SettingRow label="Server URL" description="e.g. LM Studio: http://localhost:1234/v1">
+                  <input type="text" value={customHost} onChange={(e) => { setCustomHost(e.target.value); setSrcMsg(''); }} placeholder="http://localhost:1234/v1"
                     className="text-sm px-3 py-1.5 rounded-lg outline-none w-56"
                     style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }} />
                 </SettingRow>
-                <SettingRow label="Model" description={customEngine === 'lmstudio' ? 'Enter the exact model id from your server’s GET /v1/models response.' : 'Model id served by your endpoint'}>
-                  <input type="text" value={customModel} onChange={(e) => { setCustomModel(e.target.value); setSrcMsg(''); }} placeholder="qwen2.5-7b-instruct" disabled={!inferenceConfigurable}
+                <SettingRow label="Model" description="Model id served by your endpoint">
+                  <input type="text" value={customModel} onChange={(e) => { setCustomModel(e.target.value); setSrcMsg(''); }} placeholder="qwen2.5-7b-instruct"
                     className="text-sm px-3 py-1.5 rounded-lg outline-none w-56"
                     style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }} />
                 </SettingRow>
-                <SettingRow label="Server type" description={customEngine === 'lmstudio' ? 'LM Studio adapter; also compatible with Colibri’s OpenAI-style /v1 API.' : 'OpenAI-compatible inference backend'}>
-                  <select value={customEngine} onChange={(e) => { setCustomEngine(e.target.value); setSrcMsg(''); }} disabled={!inferenceConfigurable}
+                <SettingRow label="Server type" description="OpenAI-compatible engine">
+                  <select value={customEngine} onChange={(e) => { setCustomEngine(e.target.value); setSrcMsg(''); }}
                     className="text-sm px-3 py-1.5 rounded-lg outline-none w-56"
                     style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>
-                    <option value="lmstudio">LM Studio / Colibri-compatible</option>
+                    <option value="lmstudio">LM Studio</option>
                     <option value="vllm">vLLM</option>
                     <option value="sglang">SGLang</option>
                     <option value="llamacpp">llama.cpp</option>
@@ -656,7 +599,7 @@ export function SettingsPage() {
                   </select>
                 </SettingRow>
                 <SettingRow label="API key (optional)" description="Only if your server requires one">
-                  <input type="password" value={customKey} onChange={(e) => { setCustomKey(e.target.value); setSrcMsg(''); }} placeholder="leave blank if none" disabled={!inferenceConfigurable}
+                  <input type="password" value={customKey} onChange={(e) => { setCustomKey(e.target.value); setSrcMsg(''); }} placeholder="leave blank if none"
                     className="text-sm px-3 py-1.5 rounded-lg outline-none w-56"
                     style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }} />
                 </SettingRow>
@@ -664,10 +607,8 @@ export function SettingsPage() {
             )}
             <SettingRow label="" description={srcMsg}>
               <button onClick={saveSource}
-                disabled={!inferenceConfigurable}
-                title={inferenceConfigurable ? undefined : 'Inference sources can only be changed in the desktop app.'}
                 className="text-sm px-3 py-1.5 rounded-lg outline-none cursor-pointer"
-                style={{ background: 'var(--color-accent, var(--color-bg-tertiary))', color: 'var(--color-text)', border: '1px solid var(--color-border)', opacity: inferenceConfigurable ? 1 : 0.5, cursor: inferenceConfigurable ? 'pointer' : 'not-allowed' }}>
+                style={{ background: 'var(--color-accent, var(--color-bg-tertiary))', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>
                 Save inference source
               </button>
             </SettingRow>
@@ -935,22 +876,6 @@ export function SettingsPage() {
                 See the <a href="https://open-jarvis.github.io/OpenJarvis/user-guide/tools/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)' }}>documentation</a> for details.
               </div>
             )}
-            <p className="text-xs mt-3" style={{ color: 'var(--color-text-tertiary)' }}>
-              Offline speech requires a configured local backend and downloaded model. Remote speech providers may send audio off-device.
-            </p>
-          </Section>
-
-          {/* Hand tracking */}
-          <Section title="Hand tracking">
-            <SettingRow label="Camera gestures" description="Open camera controls alongside the chat input. Camera access requires an explicit action and stops when you close the panel or leave chat.">
-              <Link
-                to="/?handTracking=1"
-                className="text-xs underline"
-                style={{ color: 'var(--color-accent)' }}
-              >
-                Open hand tracking in chat
-              </Link>
-            </SettingRow>
           </Section>
 
           {/* Data */}

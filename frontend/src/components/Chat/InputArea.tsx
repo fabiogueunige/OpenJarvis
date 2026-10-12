@@ -162,12 +162,6 @@ export function InputArea() {
     el.style.height = Math.min(el.scrollHeight, 200) + 'px';
   }, [input]);
 
-  useEffect(() => {
-    const focusInput = () => textareaRef.current?.focus();
-    window.addEventListener('openjarvis:focus-chat-input', focusInput);
-    return () => window.removeEventListener('openjarvis:focus-chat-input', focusInput);
-  }, []);
-
   const stopStreaming = useCallback(() => {
     abortRef.current?.abort();
     if (timerRef.current) {

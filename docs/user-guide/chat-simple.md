@@ -110,60 +110,6 @@ jarvis serve
 
 The server is OpenAI-compatible, so any client that works with the OpenAI API can point to `http://localhost:8000/v1`.
 
-## Connecting Colibri
-
-OpenJarvis can use a Colibri instance that exposes OpenAI-compatible Chat
-Completions and model-list endpoints. In desktop **Settings → Inference source**,
-choose **Custom OpenAI-compatible server**, then click **Use Colibri preset**.
-Configure Colibri separately to bind to loopback on port `8001` (Jarvis uses port
-`8000` by default). Enter the exact model ID reported by Colibri, add its API key
-only if Colibri requires one, save, and restart OpenJarvis. The preset only sets
-OpenJarvis's connection target; it does not install or start Colibri. To find the
-model ID, request `http://127.0.0.1:8001/v1/models` (for example,
-`curl http://127.0.0.1:8001/v1/models`) and copy the exact `id` value. Enter the
-base URL as either `http://127.0.0.1:8001` or `http://127.0.0.1:8001/v1`; the
-desktop normalizes either form so requests use one `/v1` prefix. Optional API
-keys are stored in desktop secure storage and sent as bearer authorization.
-Keep Colibri bound to loopback for local use; the preset does not change its bind
-address or expose it to the network.
-
-This connects Colibri for inference; OpenJarvis remains responsible for running
-its own configured tools when the selected agent requests them. Colibri's optional
-MCP server manages Colibri's lifecycle and is not itself a tool executor. Colibri
-serves one active model at a time, so multi-model routing remains an OpenJarvis
-capability and is not provided by this connection.
-
-Ollama is already a supported local inference source and its installed models are
-listed in Settings. Maya AI is not integrated: the reviewed assistant script does
-not expose a supported service or MCP tool interface and contains direct OS
-actions. Do not run or wrap that script as an OpenJarvis tool.
-
-## Voice, camera, and offline use
-
-Microphone transcription requires the Speech-to-Text setting and a configured
-speech backend. Offline transcription requires a local backend and model; a remote
-provider can send audio off-device. Camera hand tracking is optional in
-**Settings → Hand tracking → Open hand tracking in chat**, or the **Hand tracking**
-button above the chat input. Opening the panel does not start capture. It detects
-landmarks and basic gestures locally, and stops when stopped, when the panel closes,
-when you leave chat, or when the app/tab is hidden. Returning does not restart the
-camera. The first camera action briefly requests permission to reveal
-camera names, then immediately stops that temporary stream. Select the intended
-device (for example, **Integrated Webcam**) from the camera list before pressing
-**Start camera**. Open palm can optionally focus the chat input; gestures never
-submit messages or call tools. It uses the bundled MediaPipe Tasks Vision runtime
-and [Hand Landmarker model](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker).
-The browser's online indicator is only a connectivity hint, not proof that a
-particular server is reachable.
-
-Local inference and cached interface assets do not make the assistant universally
-autonomous. No financial or business-venture integration is configured here, and
-OpenJarvis cannot guarantee legal compliance or revenue. It does not autonomously
-retrain model weights; its existing memory, traces, and learning policies are
-separate capabilities. MCP tools should be narrowly allowlisted, with integration-
-level approval and audit controls for financial transactions, contracts, public
-communications, and other irreversible actions.
-
 ## Using the Desktop App
 
 1. Start the backend: `jarvis serve` (or `./scripts/quickstart.sh`)

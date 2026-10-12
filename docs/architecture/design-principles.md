@@ -94,21 +94,12 @@ OpenJarvis is designed to work **entirely without network access**. All core fun
 | Traces | SQLite-based, fully local |
 | Tools | Calculator, Think, FileRead all local |
 | Configuration | TOML file on disk |
-| Hand tracking | Optional MediaPipe model and WASM assets run locally after installation |
 
 Cloud engines (OpenAI, Anthropic, Google) are available through the optional `cloud` backend, but they are:
 
 - Only registered if the corresponding SDK packages are installed
 - Only activated if API keys are set as environment variables
 - Never required for any core functionality
-
-Offline operation still requires the local API server, inference runtime, and model to
-be installed and available. The desktop app and PWA can cache their interface assets,
-but API inference requests are not cached or replayed offline. Speech recognition is
-offline only when a local speech backend and its model are configured; remote speech
-providers require network access and may receive audio. Hand tracking is opt-in and
-uses the bundled model locally after the app has been installed or its PWA assets
-cached.
 
 ```python
 # This works without any network connection

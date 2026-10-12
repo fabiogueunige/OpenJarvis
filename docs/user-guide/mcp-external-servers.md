@@ -18,11 +18,6 @@ If a server is unreachable or returns an error, OpenJarvis logs a warning and co
 External MCP servers are configured in `config.toml` under `[tools.mcp]`. The
 `servers` field accepts either inline JSON or a path to a JSON file:
 
-The default config path is `~/.openjarvis/config.toml` (on Windows,
-`%USERPROFILE%\.openjarvis\config.toml`). Run `jarvis config path` to confirm
-the active path. The dashboard does not currently provide an MCP connection
-editor; configure the backend's file and restart the OpenJarvis backend.
-
 ```toml
 [tools.mcp]
 enabled = true
@@ -74,45 +69,12 @@ Each server object supports the following fields:
 | `url`            | string         | No*      | URL for Streamable HTTP transport.                       |
 | `command`         | string         | No*      | Command to launch a stdio-based MCP server.              |
 | `args`           | list of strings| No       | Arguments passed to the stdio command.                   |
-| `token`           | string         | No       | Bearer token sent as the HTTP `Authorization` header.    |
 | `include_tools`  | list of strings| No       | Whitelist of tool names to import. Only these tools are loaded. |
 | `exclude_tools`  | list of strings| No       | Blacklist of tool names to skip. All other tools are loaded. |
 
 *Either `url` or `command` must be provided. If neither is set, the server is skipped with a warning.
 
 When both `include_tools` and `exclude_tools` are specified, the whitelist is applied first, then the blacklist filters the result.
-
-### Authentication and provider endpoints
-
-OpenJarvis supports a bearer token for Streamable HTTP MCP servers, but does
-not implement an interactive OAuth login flow or arbitrary HTTP header
-configuration. The `token` value is stored in the local config (or MCP JSON
-file) as plain text: do not commit or share that file, and restrict access to
-it. Never paste credentials into chat.
-
-Some MCP providers require browser-based OAuth rather than a static bearer
-token. Those servers are not directly confirmed to work with OpenJarvis until
-their authentication flow has been tested. A third-party stdio OAuth bridge
-such as [`mcp-remote`](https://github.com/punkpeye/mcp-remote) may be
-structurally usable through the `command`/`args` transport, but OpenJarvis has
-not validated that bridge or its OAuth flow on Windows; it also runs
-third-party code and stores its own OAuth state locally. Treat it as an
-unverified option, not built-in OpenJarvis support.
-
-URLs in the GitHub MCP Registry API (for example,
-`api.mcp.github.com/oss/v0.1/servers/.../versions/latest`) return registry
-metadata; they are not MCP service endpoints. Obtain the runtime endpoint and
-supported authentication method from the provider's account dashboard or
-official connection guide. Zapier, Vibe Prospecting, Tallyfy, and Hermoso have
-appeared in the registry, but their account-specific endpoints and auth have
-not been tested with OpenJarvis.
-
-Use `include_tools` as an allowlist of exact names returned by that server's
-`tools/list`, and grant only the provider-side permissions needed for those
-tools. Do not enable write, outreach, publishing, advertising, payment, or
-other spend-capable actions until you have reviewed them and set explicit
-approval and budget limits. Tool filtering in OpenJarvis is not a substitute
-for limiting permissions in the provider account.
 
 ## Examples
 

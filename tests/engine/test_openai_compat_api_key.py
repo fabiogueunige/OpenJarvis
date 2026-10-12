@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 import respx
 
 from openjarvis.core.types import Message, Role
 from openjarvis.engine.openai_compat_engines import (
-    LMStudioEngine,
     OpenAICompatEngine,
     VLLMEngine,
     normalize_openai_base_url,
@@ -81,33 +78,6 @@ class TestAuthorizationHeader:
         monkeypatch.setenv("OPENAI_COMPAT_API_KEY", "sk-env")
         engine = OpenAICompatEngine(host="http://testhost:9000", api_key="sk-explicit")
         assert engine._api_key == "sk-explicit"
-
-    def test_colibri_compatible_lmstudio_engine_uses_model_and_bearer_key(self) -> None:
-        model_id = "colibri/qwen3-8b"
-        engine = LMStudioEngine(host="http://127.0.0.1:8001", api_key="coli-test")
-        with respx.mock:
-            route = respx.post("http://127.0.0.1:8001/v1/chat/completions").mock(
-                return_value=httpx.Response(200, json=_CHAT_RESPONSE)
-            )
-            engine.generate([Message(role=Role.USER, content="hi")], model=model_id)
-        request = route.calls.last.request
-        assert request.headers["Authorization"] == "Bearer coli-test"
-        assert request.url.path == "/v1/chat/completions"
-        assert json.loads(request.content)["model"] == model_id
-
-    def test_lmstudio_model_list_uses_single_v1_prefix_and_optional_auth(self) -> None:
-        host = normalize_openai_base_url("http://127.0.0.1:8001/v1")
-        engine = LMStudioEngine(host=host, api_key="coli-test")
-        with respx.mock:
-            route = respx.get("http://127.0.0.1:8001/v1/models").mock(
-                return_value=httpx.Response(
-                    200, json={"data": [{"id": "colibri/qwen3-8b"}]}
-                )
-            )
-            assert engine.list_models() == ["colibri/qwen3-8b"]
-        request = route.calls.last.request
-        assert request.url.path == "/v1/models"
-        assert request.headers["Authorization"] == "Bearer coli-test"
 
 
 class TestNormalizeOpenAIBaseUrl:
