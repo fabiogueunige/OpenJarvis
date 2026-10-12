@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jarvis-voice"
+version = "0.1.0"
+description = "JARVIS voice-first assistant prototype: wake word -> STT -> LLM -> TTS loop"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # audio I/O (PortAudio bindings) — needs system libportaudio2 on Ubuntu
+    "sounddevice==0.5.1",
+    "numpy==1.26.4",
+    # wake word engine (Apache-2.0). NOTE: no pretrained single-word 'Jarvis'
+    # model exists; see docs/WAKE_WORD.md.
+    "openwakeword==0.6.0",
+    # speech-to-text (MIT, CTranslate2-based)
+    "faster-whisper==1.1.1",
+]
+
+[project.optional-dependencies]
+tts-piper = ["piper-tts==1.2.0"]
+tts-kokoro = ["kokoro-onnx==0.4.7", "soundfile==0.12.1"]
+dev = ["pytest==8.3.3"]
+
+[tool.setuptools.packages.find]
+include = ["jarvis_voice*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:libtmux"   # unrelated global plugin crashes collection on pytest 8
