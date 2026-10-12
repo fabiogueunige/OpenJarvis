@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Callable, Optional
 
 from .interfaces import AudioCapture, AudioFrame, AudioPlayer, PcmAudio
@@ -96,10 +97,18 @@ class SdAudioCapture(AudioCapture):
 
 
 class SdAudioPlayer(AudioPlayer):
-    """Blocking PCM playback on the default output device."""
+    """PCM playback on the default output device with barge-in abort.
+
+    Uses a non-blocking sd.play + sd.wait so ``abort()`` (called from the
+    main thread when the user interrupts) can stop the stream immediately
+    instead of waiting for the rest of the chunk to drain.
+    """
 
     def __init__(self, device: Optional[str] = None) -> None:
         self.device = device
+        self._stream = None
+        self._lock = threading.Lock()
+        self._aborted = threading.Event()
 
     def play(self, audio: PcmAudio) -> None:
         if not audio.pcm:
@@ -109,7 +118,42 @@ class SdAudioPlayer(AudioPlayer):
 
         samples = np.frombuffer(audio.pcm, dtype="<i2").astype(np.float32) / 32768.0
         try:
-            sd.play(samples, samplerate=audio.sample_rate, device=self.device,
-                    blocking=True)
+            with self._lock:
+                if self._stream is None:
+                    self._stream = sd.OutputStream(
+                        samplerate=audio.sample_rate, channels=1,
+                        dtype="float32", device=self.device)
+                    self._stream.start()
+                self._stream.write(samples)
         except Exception as exc:
             raise RuntimeError(f"audio playback failed: {exc}") from exc
+        # wait for this chunk to finish before returning; abort() stops the
+        # stream so the wait ends promptly on barge-in.
+        try:
+            st = self._stream
+            if st is not None:
+                while st.active and not self._aborted.is_set():
+                    time.sleep(0.01)
+        except Exception:  # pragma: no cover
+            pass
+
+    def abort(self) -> None:
+        """Stop playback promptly and discard any queued samples."""
+        sd = _require_sounddevice()
+        self._aborted.set()
+        with self._lock:
+            if self._stream is not None:
+                try:
+                    self._stream.stop()   # drops pending buffer
+                    self._stream.close()
+                except Exception as exc:  # pragma: no cover
+                    log.debug("player abort: %s", exc)
+                self._stream = None
+        self._aborted.clear()
+        try:
+            sd.stop()                     # global safety net (all streams)
+        except Exception:  # pragma: no cover
+            pass
+
+    def close(self) -> None:
+        self.abort()

@@ -45,6 +45,22 @@ def build_llm(cfg: AppConfig):
                      temperature=cfg.llm.temperature)
 
 
+def build_session_policy(cfg: AppConfig):
+    from .session import SessionPolicy
+    sc = cfg.session
+    return SessionPolicy(resume_active=sc.resume_active,
+                         inactivity_timeout_seconds=sc.inactivity_timeout_seconds,
+                         exit_phrases=list(sc.exit_phrases))
+
+
+def build_barge_in(cfg: AppConfig):
+    from .interfaces import BargeInConfig
+    bc = cfg.barge_in
+    return BargeInConfig(enabled=bc.enabled, threshold_rms=bc.threshold_rms,
+                         min_frames_in_row=bc.min_frames_in_row,
+                         grace_seconds=bc.grace_seconds)
+
+
 def build_tts(cfg: AppConfig):
     if cfg.tts.engine == "scripted":
         from .tts.backends import ScriptedTTS
