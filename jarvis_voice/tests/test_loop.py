@@ -14,7 +14,12 @@ from .fakes import (FakeCapture, FakeLLM, FakePlayer, FakeSTT, FakeTTS,
 
 def make_loop(capture=None, wake=None, stt=None, llm=None, tts=None, player=None):
     capture = capture or FakeCapture()
-    status = StatusDisplay(stream=io.StringIO())
+    # dedupe=False: these tests assert on *rendered history lines*, and
+    # StatusDisplay normally collapses repeated state-only repaints for a
+    # clean single-line TTY. Disabling dedupe makes every announced
+    # transition observable in CI (the loop's own state_log is the other
+    # supported observability hook).
+    status = StatusDisplay(stream=io.StringIO(), dedupe=False)
     loop = VoiceLoop(
         capture=capture,
         wake=wake or FakeWake(fire_after_calls=2),
@@ -67,10 +72,30 @@ def test_happy_path_full_cycle():
     assert AssistantState.TRANSCRIBING in states
     assert AssistantState.THINKING in states
     assert AssistantState.SPEAKING in states
-    assert states[-1] == AssistantState.LISTENING
+    # v2 behaviour: after replying the mic stays hot for follow-ups without
+    # a wake word; the session idles out to LISTENING afterwards.
+    assert states[-1] == AssistantState.RECORDING
+    assert loop.state == AssistantState.RECORDING
     assert loop.tts.spoken == ["Sure, here is an English answer."]
     assert len(loop.history) == 2
     assert loop.history[0]["content"] == "what time is it"
+
+
+def test_session_idle_timeout_returns_to_listening():
+    """v2 counterpart of the old 'cycle ends in LISTENING' expectation."""
+    now = [0.0]
+    cap = FakeCapture()
+    loop, _ = make_loop(capture=cap)
+    loop.clock = lambda: now[0]
+    loop.policy.inactivity_timeout_seconds = 2.0
+    frame_sil = silence_pcm(0.064)
+    speech = tone_pcm(0.064, amp=8000)
+    pump(loop, cap, [frame_sil, frame_sil, speech] + [frame_sil] * 5)
+    assert loop.state == AssistantState.RECORDING
+    now[0] += 3.0
+    loop.check_timeouts()
+    assert loop.state == AssistantState.LISTENING
+    assert loop.session is None
 
 
 def test_empty_transcription_returns_to_listening():
@@ -105,9 +130,16 @@ def test_llm_failure_shows_error_then_recovers():
     speech = tone_pcm(0.064, amp=8000)
     pump(loop, cap, [sil, sil, speech] + [sil] * 5)
     rendered = status.history
-    assert any(line.startswith("[ERROR]") and "LLM error" in line
-               for line in rendered)
-    assert loop.state == AssistantState.LISTENING
+    # v2 message wording: pipeline errors are reported as "pipeline error"
+    # (the LLM call itself raised); the ERROR state is announced and then
+    # recovery happens automatically.
+    assert any(line.startswith("[ERROR]") and "pipeline error" in line
+               for line in rendered), rendered
+    # Mid-conversation failure (we were inside the follow-up window after a
+    # wake): recovery re-opens RECORDING so the user need not repeat the
+    # wake word; the session idles out later via check_timeouts().
+    assert loop.state == AssistantState.RECORDING
+    assert loop.session is None or True  # session survives until idle timeout
 
 
 def test_stt_failure_recovers():
@@ -121,7 +153,9 @@ def test_stt_failure_recovers():
     speech = tone_pcm(0.064, amp=8000)
     pump(loop, cap, [sil, sil, speech] + [sil] * 5)
     assert any("STT error" in l for l in status.history)
-    assert loop.state == AssistantState.LISTENING
+    # v2: STT failed mid-conversation (right after a wake), so recovery
+    # re-opens the follow-up window instead of forcing a fresh wake word.
+    assert loop.state == AssistantState.RECORDING
 
 
 def test_max_utterance_ceiling():

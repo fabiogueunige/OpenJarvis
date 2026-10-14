@@ -81,6 +81,27 @@ class SpeechToText(ABC):
         """Return the transcript; empty string means nothing was heard."""
 
 
+class CancelToken:
+    """Cooperative cancellation flag shared across pipeline stages.
+
+    Cheap to poll; the audio callback sets it on confirmed barge-in and the
+    main thread checks it between LLM deltas / TTS chunks / playbacks so an
+    interrupted request stops doing downstream work promptly.
+    """
+
+    __slots__ = ("_cancelled",)
+
+    def __init__(self) -> None:
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
+
+    @property
+    def cancelled(self) -> bool:
+        return self._cancelled
+
+
 class LLMBackend(ABC):
     """Replaceable conversational text generator."""
 
@@ -91,6 +112,26 @@ class LLMBackend(ABC):
         ``history`` is a list of ``{"role": "user"|"assistant", "content": str}``
         messages preceding ``user_text``.
         """
+
+    def supports_streaming(self) -> bool:
+        """Backends that can stream token deltas override this (Ollama does)."""
+        return False
+
+    def stream(self, user_text: str, history: list[dict],
+               cancel: Optional[CancelToken] = None):
+        """Yield text deltas. Default: wrap the blocking generate() call.
+
+        Implementations must poll ``cancel`` between network reads and stop
+        consuming the upstream response when it fires.
+        """
+        yield self.generate(user_text, history)
+
+
+class StreamingLLMBackend(LLMBackend):
+    """Marker/mixin for backends implementing true streaming via stream()."""
+
+    def supports_streaming(self) -> bool:
+        return True
 
 
 class TTSSynthesisResult:
@@ -126,6 +167,30 @@ class AudioPlayer(ABC):
     @abstractmethod
     def play(self, audio: PcmAudio) -> None:
         """Blocking playback of one buffer."""
+
+    def abort(self) -> None:
+        """Stop any in-flight playback promptly (barge-in). Optional."""
+
+
+@dataclass
+class BargeInConfig:
+    """Tuning for user-speech detection while JARVIS is speaking.
+
+    Echo self-triggering is mitigated at three levels (see loop.py):
+      1. gating — energy is only evaluated after ``grace_seconds`` from
+         playback start (chime/first transient), and requires a run of
+         ``min_frames_in_row`` loud frames;
+      2. hardware — recommend PipeWire AEC or headset (docs);
+      3. confirmation — a barge-in is only *confirmed* if STT of the
+         interrupted utterance yields non-empty text; otherwise it is
+         counted as a false trigger and the turn simply ends quietly.
+    """
+
+    enabled: bool = True
+    threshold_rms: float = 900.0     # higher than VAD: speaker bleed is usually weak
+    min_frames_in_row: int = 4       # ~256 ms at 64 ms blocks
+    grace_seconds: float = 0.35
+    confirm_with_stt: bool = True
 
 
 @dataclass

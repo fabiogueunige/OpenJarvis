@@ -26,14 +26,15 @@ _RESET = "\033[0m"
 
 
 class StatusDisplay:
-    def __init__(self, stream=None) -> None:
+    def __init__(self, *, stream=None, dedupe: bool = True) -> None:
         self._stream = stream or sys.stdout
         self._tty = bool(getattr(self._stream, "isatty", lambda: False)())
         self._current: Optional[AssistantState] = None
+        self.dedupe = dedupe
         self.history: list[str] = []  # captured for tests / debugging
 
     def set_state(self, state: AssistantState, detail: str = "") -> None:
-        if state == self._current and not detail:
+        if (self.dedupe and state == self._current and not detail):
             return
         self._current = state
         line = f"[{state.value}] {detail}".rstrip()

@@ -122,6 +122,10 @@ class FakeTTS(TextToSpeech):
 class FakePlayer(AudioPlayer):
     def __init__(self) -> None:
         self.played: list[PcmAudio] = []
+        self.aborts = 0
 
     def play(self, audio: PcmAudio) -> None:
         self.played.append(audio)
+
+    def abort(self) -> None:
+        self.aborts += 1
