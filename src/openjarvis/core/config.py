@@ -1449,6 +1449,8 @@ class SecurityConfig:
     local_engine_bypass: bool = False
     local_tool_bypass: bool = False
     profile: str = ""
+    # Directories file_read/file_write may touch; empty means unrestricted.
+    allowed_dirs: List[str] = field(default_factory=list)
     vault_key_path: str = field(
         default_factory=lambda: str(get_config_dir() / ".vault_key")
     )
@@ -1591,7 +1593,12 @@ class SessionConfig:
 
 @dataclass(slots=True)
 class A2AConfig:
-    """Agent-to-Agent protocol settings."""
+    """Settings for A2A integrations and configuration diagnostics.
+
+    The built-in ``jarvis serve`` app does not mount A2A endpoints; ``enabled``
+    does not change that app's route surface. Library integrations using
+    ``A2AServer`` must configure their transport and authentication explicitly.
+    """
 
     enabled: bool = False
     # Bearer token required for inbound A2A requests. Empty = unauthenticated

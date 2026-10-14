@@ -180,7 +180,13 @@ class AgentExecutor:
             if isinstance(registered, BaseTool):
                 instances.append(registered)
             elif isinstance(registered, type) and issubclass(registered, BaseTool):
-                instances.append(registered())
+                from openjarvis.tools._paths import file_tool_kwargs
+
+                instances.append(
+                    registered(
+                        **file_tool_kwargs(name, getattr(self._system, "config", None))
+                    )
+                )
 
         execution_cls = (
             agent_cls
@@ -461,6 +467,7 @@ class AgentExecutor:
             mcp_tools=mcp_tools,
             mcp_clients=mcp_clients,
             knowledge_db_path=getattr(self._system, "knowledge_db_path", None),
+            app_config=getattr(self._system, "config", None),
         )
         self._toolkit_local.current = resolved_toolkit
         tool_instances = resolved_toolkit.instances
