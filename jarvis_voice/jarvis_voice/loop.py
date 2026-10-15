@@ -382,6 +382,7 @@ class VoiceLoop:
         # next utterance until the session idles out or the user says bye.
         self._buf.reset()
         self._drain_pending()
+        self._in_followup = True     # hot window open: errors keep the session
         self._set_state(AssistantState.RECORDING,
                         "follow-up? stay silent to end session")
         self._busy = False
@@ -536,10 +537,12 @@ class VoiceLoop:
             #    wake, or no session at all): back to wake-word listening.
             #    The session survives until its idle timeout either way.
             # NOTE: self._state has already been flipped to ERROR by the
-            # announcement above, so recovery must inspect last_state.
+            # announcement above, so recovery must use _in_followup (set
+            # when a reply completes, cleared by handle_wake/_end_session)
+            # rather than last_state_before_error — a failed first request
+            # also runs with state==RECORDING but is NOT mid-conversation.
             in_conversation = (self.session is not None and
-                               self.last_state_before_error in
-                               (AssistantState.RECORDING,))
+                               self._in_followup)
             if in_conversation:
                 self._buf.reset()
                 self._set_state(AssistantState.RECORDING,

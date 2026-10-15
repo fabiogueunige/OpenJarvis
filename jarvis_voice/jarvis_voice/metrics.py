@@ -82,8 +82,10 @@ class MetricsCollector:
         return rec
 
     def note_error(self, kind: str = "") -> None:
-        self.errors += 1
+        # Count only errors that actually happened during a turn; stray
+        # notes outside any turn are logged but do not skew the counter.
         if self.turns:
+            self.errors += 1
             self.turns[-1].error = kind or "error"
 
     def note_timeout(self) -> None:
