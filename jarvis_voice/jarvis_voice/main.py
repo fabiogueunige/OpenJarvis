@@ -99,7 +99,11 @@ def main(argv=None) -> int:
                           status=status, sample_rate=cfg.audio.sample_rate,
                           language=cfg.stt.language,
                           max_history_turns=cfg.llm.max_history_turns,
-                          store_audio_path=_audio_dir(cfg))
+                          store_audio_path=_audio_dir(cfg),
+                          session_policy=build_session_policy(cfg),
+                          barge_in=build_barge_in(cfg),
+                          followup_window_seconds=cfg.session.followup_window_seconds,
+                          max_context_tokens=cfg.session.max_context_tokens)
         loop.capture_sr = cfg.audio.sample_rate
         loop._set_state(loop.state, "demo mode")
         try:
@@ -112,7 +116,8 @@ def main(argv=None) -> int:
         return 0
 
     # real hardware path
-    from .factory import build_audio, build_llm, build_stt, build_tts, build_vad, build_wake
+    from .factory import (build_audio, build_barge_in, build_llm, build_session_policy,
+                          build_stt, build_tts, build_vad, build_wake)
     try:
         wake = build_wake(cfg)
     except Exception as exc:
@@ -128,7 +133,11 @@ def main(argv=None) -> int:
                      sample_rate=cfg.audio.sample_rate,
                      language=cfg.stt.language,
                      max_history_turns=cfg.llm.max_history_turns,
-                     store_audio_path=_audio_dir(cfg))
+                     store_audio_path=_audio_dir(cfg),
+                     session_policy=build_session_policy(cfg),
+                     barge_in=build_barge_in(cfg),
+                     followup_window_seconds=cfg.session.followup_window_seconds,
+                     max_context_tokens=cfg.session.max_context_tokens)
 
     def _sigint(*_):
         status.info("\nShutting down…")
