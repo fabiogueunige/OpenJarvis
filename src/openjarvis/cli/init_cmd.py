@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.markup import escape
 from rich.panel import Panel
 
+from openjarvis.cli._analytics_consent import apply_analytics_choice
 from openjarvis.cli._banner import print_banner
 from openjarvis.cli._bootstrap import detect_cloud_keys
 from openjarvis.cli.model import find_model_spec, hf_download, ollama_pull
@@ -226,6 +227,11 @@ def _do_download(engine: str, model: str, spec, console: Console) -> None:
 
 @click.command()
 @click.option(
+    "--analytics/--no-analytics",
+    default=None,
+    help="Consent to or decline external usage analytics without prompting.",
+)
+@click.option(
     "--force", is_flag=True, help="Overwrite existing config without prompting."
 )
 @click.option(
@@ -304,6 +310,7 @@ def init(
     enable_digest: bool = False,
     preset: Optional[str] = None,
     from_bare_jarvis: bool = False,
+    analytics: bool | None = None,
 ) -> None:
     """Detect hardware and generate ~/.openjarvis/config.toml."""
     print_banner(quiet=(ctx.obj or {}).get("quiet", False))
@@ -351,7 +358,12 @@ def init(
             raise SystemExit(1)
         DEFAULT_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         DEFAULT_CONFIG_PATH.write_text(
-            preset_path.read_text(encoding="utf-8"), encoding="utf-8"
+            apply_analytics_choice(
+                preset_path.read_text(encoding="utf-8"),
+                analytics,
+                prompt=not from_bare_jarvis,
+            ),
+            encoding="utf-8",
         )
         console.print(
             f"[green]Preset '{preset}' installed to {DEFAULT_CONFIG_PATH}[/green]"
@@ -462,6 +474,9 @@ def init(
     # ``--config`` selects an existing file to install; it is not an alternate
     # output path.  Always activate the selected/generated configuration at
     # the canonical location that subsequent ``jarvis`` commands load.
+    toml_content = apply_analytics_choice(
+        toml_content, analytics, prompt=not from_bare_jarvis
+    )
     DEFAULT_CONFIG_PATH.write_text(toml_content, encoding="utf-8")
 
     console.print()
