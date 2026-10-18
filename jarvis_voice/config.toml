@@ -1,0 +1,49 @@
+# JARVIS voice prototype — configuration example
+# Copy to config.toml and adjust. All values shown are the defaults.
+
+[audio]
+sample_rate = 16000            # do not change: whisper + openWakeWord expect 16 kHz
+block_size = 1024              # ~64 ms frames
+input_device = ""              # empty = system default; or a substring of the device name
+output_device = ""             # empty = system default
+silence_threshold_rms = 500.0  # VAD sensitivity (lower = more sensitive)
+silence_seconds = 1.2          # end-of-utterance trigger
+max_utterance_seconds = 30.0   # hard cap per recording
+startup_timeout_seconds = 6.0
+
+[wake_word]
+engine = "openwakeword"        # openwakeword | whisper_hypothesis | scripted
+word = "jarvis"
+threshold = 0.5
+# IMPORTANT: openWakeWord has NO pretrained single-word "Jarvis" model.
+# The community "hey_jarvis" model reacts to "Hey Jarvis" (two words).
+# Set allow_close_match = true ONLY if you accept that model, or point
+# model_paths at your own trained jarvis.onnx. Otherwise startup fails loudly.
+allow_close_match = false
+model_paths = []               # e.g. ["~/.local/share/jarvis/models/jarvis.onnx"]
+
+[stt]
+engine = "faster_whisper"      # faster_whisper | scripted
+model_size = "base"            # tiny | base | small | distil-large-v3
+device = "auto"                # auto | cpu | cuda
+compute_type = "auto"          # int8 on CPU, float16 on GPU
+language = "en"
+
+[llm]
+engine = "ollama"              # ollama | echo
+model = "qwen3:4b"             # `ollama pull qwen3:4b`
+base_url = "http://localhost:11434"
+timeout_seconds = 60.0
+keep_alive = "10m"
+temperature = 0.7
+max_history_turns = 8
+
+[tts]
+engine = "piper"               # piper | kokoro | scripted
+piper_model = "~/.local/share/jarvis/piper/en_US-lessac-medium.onnx"
+kokoro_model = "~/.local/share/jarvis/kokoro/v1.0.onnx"
+kokoro_voices = "~/.local/share/jarvis/kokoro/voices.bin"
+kokoro_voice = "af_heart"
+espeak_data_path = ""          # leave empty; set only if espeak-ng data is non-standard
+
+store_audio = false            # raw audio is NEVER stored unless you flip this
